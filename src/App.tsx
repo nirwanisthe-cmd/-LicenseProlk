@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { ShoppingCart, User, ShieldCheck, Menu, X, ChevronRight, Star, CheckCircle2, Package, BarChart3, Settings, Users, ShoppingBag, LayoutDashboard, LogOut, ArrowRight, CreditCard, Mail, Search } from 'lucide-react';
+import { ShoppingCart, User, ShieldCheck, Menu, X, ChevronRight, Star, CheckCircle2, Package, BarChart3, Settings, Users, ShoppingBag, LayoutDashboard, LogOut, ArrowRight, CreditCard, Mail, Search, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCartStore } from './store/useCartStore';
 import { cn, formatCurrency } from './lib/utils';
@@ -39,6 +39,7 @@ const Navbar = ({ user }: { user: any }) => {
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('admin_session');
       await signOut(auth);
     } catch (error) {
       console.error("Logout failed:", error);
@@ -119,7 +120,23 @@ const Navbar = ({ user }: { user: any }) => {
 
 const Footer = () => {
   const location = useLocation();
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
   if (location.pathname.startsWith('/admin')) return null;
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'LicenseProlk' && password === 'WelCome./@1') {
+      localStorage.setItem('admin_session', 'true');
+      setShowAdminLogin(false);
+      window.location.href = '/admin';
+    } else {
+      setError('Invalid credentials');
+    }
+  };
 
   return (
     <footer className="bg-slate-900 text-slate-300 pt-20 pb-10">
@@ -167,11 +184,64 @@ const Footer = () => {
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
         <p>© 2026 LicensePro Marketplace. All rights reserved.</p>
-        <div className="flex gap-6">
+        <div className="flex items-center gap-6">
           <Link to="/privacy" className="hover:text-white">Privacy Policy</Link>
           <Link to="/terms" className="hover:text-white">Terms & Conditions</Link>
+          <button 
+            onClick={() => setShowAdminLogin(true)}
+            className="opacity-0 hover:opacity-100 transition-opacity p-1 cursor-default"
+            title="Admin Access"
+          >
+            <Lock size={12} />
+          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showAdminLogin && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900">Admin Login</h3>
+                <button onClick={() => setShowAdminLogin(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <X size={20} className="text-slate-400" />
+                </button>
+              </div>
+              <form onSubmit={handleAdminLogin} className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Username</label>
+                  <input 
+                    type="text" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900" 
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                  <input 
+                    type="password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-slate-900" 
+                    required
+                  />
+                </div>
+                {error && <p className="text-rose-500 text-xs font-medium">{error}</p>}
+                <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all">
+                  Login
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </footer>
   );
 };
@@ -522,8 +592,16 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
 
-  const isAdmin = user?.email === "nirwanisthe@gmail.com" && user?.emailVerified;
+  const isLocalAdmin = localStorage.getItem('admin_session') === 'true';
+  const isAdmin = (user?.email === "nirwanisthe@gmail.com" && user?.emailVerified) || isLocalAdmin;
+  
   if (!isAdmin) return <Navigate to="/" replace />;
+
+  const handleAdminLogout = async () => {
+    localStorage.removeItem('admin_session');
+    await signOut(auth);
+    window.location.href = '/';
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -545,10 +623,13 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
         </nav>
 
         <div className="pt-6 border-t border-slate-800">
-          <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 transition-colors text-sm">
+          <button 
+            onClick={handleAdminLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 transition-colors text-sm text-left"
+          >
             <LogOut size={20} />
             Exit Admin
-          </Link>
+          </button>
         </div>
       </aside>
       <main className="flex-grow ml-64 p-10">
