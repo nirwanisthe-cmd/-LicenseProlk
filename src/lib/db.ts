@@ -91,7 +91,11 @@ export const productService = {
 
   async getBySlug(slug: string) {
     try {
-      const q = query(collection(db, 'products'), where('slug', '==', slug));
+      const q = query(
+        collection(db, 'products'), 
+        where('slug', '==', slug),
+        where('status', '==', 'active')
+      );
       const snapshot = await getDocs(q);
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];

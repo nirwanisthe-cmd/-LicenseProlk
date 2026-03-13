@@ -21,7 +21,17 @@ import { MatrixClothBackground } from './components/MatrixClothBackground';
 import { auth, onAuthStateChanged, signInWithPopup, googleProvider, signOut } from './lib/firebase';
 import { productService, statsService } from './lib/db';
 
+import { ThunderEffect } from './components/ThunderEffect';
+
 // --- Components ---
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+};
 
 const Navbar = ({ user }: { user: any }) => {
   const { items } = useCartStore();
@@ -434,12 +444,13 @@ const ProductCard = ({ product }: { product: any, key?: any }) => {
               <span className="ml-2 text-sm text-slate-400 line-through">{formatCurrency(product.compare_price)}</span>
             )}
           </div>
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={() => addItem(product)}
             className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all"
           >
             <ShoppingCart size={20} />
-          </button>
+          </motion.button>
         </div>
       </div>
     </motion.div>
@@ -766,8 +777,41 @@ export default function App() {
     });
   }, []);
 
+  useEffect(() => {
+    let interval: any;
+    const originalTitle = "LicensePro";
+    const notificationTitle = "Message Received! 🔔";
+    const bellSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is inactive
+        bellSound.play().catch(() => {
+          // Silent catch for browsers blocking auto-play
+        });
+        let showNotification = true;
+        interval = setInterval(() => {
+          document.title = showNotification ? notificationTitle : originalTitle;
+          showNotification = !showNotification;
+        }, 1000);
+      } else {
+        // Tab is active
+        clearInterval(interval);
+        document.title = originalTitle;
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <Router>
+      <ScrollToTop />
+      <ThunderEffect />
       <div className="font-sans text-slate-900 antialiased">
         <Navbar user={user} />
         <main>

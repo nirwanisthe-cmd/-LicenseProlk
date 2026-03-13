@@ -32,6 +32,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
     } else {
       set({ items: [...currentItems, { ...product, quantity: 1 }] });
     }
+    window.dispatchEvent(new CustomEvent('thunder-add-to-cart'));
   },
   removeItem: (productId) => {
     set({ items: get().items.filter((item) => item.id !== productId) });

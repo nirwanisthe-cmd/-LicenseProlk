@@ -15,6 +15,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (slug) {
+      window.scrollTo(0, 0);
       productService.getBySlug(slug).then(data => {
         setProduct(data);
         setLoading(false);
@@ -101,12 +102,13 @@ export default function ProductDetailPage() {
                 </div>
               </div>
 
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.98 }}
                 onClick={() => addItem(product)}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-3"
               >
                 <ShoppingCart size={22} /> Add to Cart
-              </button>
+              </motion.button>
             </div>
 
             <div className="border-t border-slate-100 pt-8">
