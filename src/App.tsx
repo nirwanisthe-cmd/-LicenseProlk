@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { ShoppingCart, User, ShieldCheck, Menu, X, ChevronRight, Star, CheckCircle2, Package, BarChart3, Settings, Users, ShoppingBag, LayoutDashboard, LogOut, ArrowRight, CreditCard, Mail, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCartStore } from './store/useCartStore';
@@ -18,14 +18,32 @@ import FAQPage from './pages/FAQPage';
 import LegalPage from './pages/LegalPage';
 
 import { MatrixClothBackground } from './components/MatrixClothBackground';
+import { auth, onAuthStateChanged, signInWithPopup, googleProvider, signOut } from './lib/firebase';
+import { productService, statsService } from './lib/db';
 
 // --- Components ---
 
-const Navbar = () => {
+const Navbar = ({ user }: { user: any }) => {
   const { items } = useCartStore();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -65,10 +83,31 @@ const Navbar = () => {
               </span>
             )}
           </Link>
-          <Link to="/admin" className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-            <User size={18} />
-            Admin
-          </Link>
+          
+          {user ? (
+            <div className="flex items-center gap-4">
+              <Link to="/admin" className="hidden sm:flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+                <User size={18} />
+                Admin
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="p-2 text-slate-600 hover:text-rose-600 transition-colors"
+                title="Logout"
+              >
+                <LogOut size={20} />
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+            >
+              <User size={18} />
+              Login
+            </button>
+          )}
+
           <button className="md:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -140,13 +179,58 @@ const Footer = () => {
 // --- Pages ---
 
 const HomePage = () => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => setProducts(data.slice(0, 4)));
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
   }, []);
+
+  useEffect(() => {
+    const initialProducts = [
+      { id: "windows-11-pro", name: "Windows 11 Pro Retail Key", slug: "windows-11-pro", short_description: "Official Microsoft Windows 11 Pro Retail License Key.", price: 199.99, compare_price: 249.99, stock_quantity: 500, category: "Operating Systems", delivery_type: "Instant Email", image_url: "https://picsum.photos/seed/win11/800/600", sku: "MS-W11-PRO", status: "active" },
+      { id: "adobe-cc-1yr", name: "Adobe Creative Cloud 1 Year", slug: "adobe-cc-1yr", short_description: "Full access to all Adobe apps for 12 months.", price: 599.99, compare_price: 699.99, stock_quantity: 50, category: "Design", delivery_type: "Account Activation", image_url: "https://picsum.photos/seed/adobe/800/600", sku: "AD-CC-1YR", status: "active" },
+      { id: "jetbrains-all", name: "JetBrains All Products Pack", slug: "jetbrains-all", short_description: "The complete suite of JetBrains IDEs.", price: 249.00, compare_price: 299.00, stock_quantity: 100, category: "Developer Tools", delivery_type: "License Key", image_url: "https://picsum.photos/seed/jetbrains/800/600", sku: "JB-ALL-PP", status: "active" },
+      { id: "autocad-2024", name: "AutoCAD 2024 Subscription", slug: "autocad-2024", short_description: "Professional 2D and 3D CAD software.", price: 1690.00, compare_price: 1850.00, stock_quantity: 20, category: "Engineering", delivery_type: "License Key", image_url: "https://picsum.photos/seed/autocad/800/600", sku: "AC-2024-SUB", status: "active" }
+    ];
+
+    const loadProducts = async () => {
+      try {
+        const data = await productService.getAll();
+        if (data && data.length > 0) {
+          setProducts(data.slice(0, 4));
+        } else {
+          // Use initial products for UI immediately
+          setProducts(initialProducts.slice(0, 4));
+          
+          // Only attempt to seed if user is admin and email is verified
+          const isAdmin = user?.email === "nirwanisthe@gmail.com" && user?.emailVerified;
+          if (isAdmin) {
+            try {
+              await productService.seedProducts(initialProducts);
+              const seededData = await productService.getAll();
+              if (seededData && seededData.length > 0) {
+                setProducts(seededData.slice(0, 4));
+              }
+            } catch (seedError) {
+              console.warn("Seeding failed (likely permissions):", seedError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load products:", error);
+        // Fallback to initial products if fetch fails
+        setProducts(initialProducts.slice(0, 4));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProducts();
+  }, [user]);
 
   return (
     <div className="pt-20">
@@ -208,11 +292,19 @@ const HomePage = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {products.map((product: any) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-80 bg-slate-100 rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {products.map((product: any) => (
+                <ProductCard key={product.id || product.slug} product={product} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -285,16 +377,14 @@ const ProductCard = ({ product }: { product: any, key?: any }) => {
 };
 
 const ShopPage = () => {
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        setProducts(data);
-        setLoading(false);
-      });
+    productService.getAll().then(data => {
+      setProducts(data || []);
+      setLoading(false);
+    });
   }, []);
 
   return (
@@ -328,7 +418,7 @@ const ShopPage = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {products.map((product: any) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id || product.slug} product={product} />
             ))}
           </div>
         )}
@@ -420,6 +510,21 @@ const CartPage = () => {
 // --- Admin Components ---
 
 const AdminLayout = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+
+  const isAdmin = user?.email === "nirwanisthe@gmail.com" && user?.emailVerified;
+  if (!isAdmin) return <Navigate to="/" replace />;
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <aside className="w-64 bg-slate-900 text-slate-400 p-6 flex flex-col fixed h-full">
@@ -475,9 +580,7 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(res => res.json())
-      .then(data => setStats(data));
+    statsService.getStats().then(data => setStats(data));
   }, []);
 
   if (!stats) return <div className="animate-pulse space-y-8">
@@ -532,7 +635,7 @@ const AdminDashboard = () => {
           <h3 className="text-lg font-bold text-slate-900 mb-6">Recent Orders</h3>
           <div className="space-y-6">
             {stats.recentOrders.map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between">
+              <div key={order.id || order.order_number} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500">
                     <User size={18} />
@@ -572,10 +675,20 @@ const StatCard = ({ title, value, change, icon }: { title: string, value: string
 // --- Main App ---
 
 export default function App() {
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+  }, []);
+
   return (
     <Router>
       <div className="font-sans text-slate-900 antialiased">
-        <Navbar />
+        <Navbar user={user} />
         <main>
           <Routes>
             {/* Customer Routes */}

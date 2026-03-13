@@ -4,6 +4,8 @@ import { cn } from '../lib/utils';
 
 type TabType = 'general' | 'payment' | 'analytics' | 'email' | 'security' | 'notifications';
 
+import { settingsService } from '../lib/db';
+
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [settings, setSettings] = useState<any>({});
@@ -11,12 +13,10 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/admin/settings')
-      .then(res => res.json())
-      .then(data => {
-        setSettings(data);
-        setLoading(false);
-      });
+    settingsService.getSettings().then(data => {
+      setSettings(data || {});
+      setLoading(false);
+    });
   }, []);
 
   const handleChange = (key: string, value: string) => {
@@ -26,14 +26,8 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
-      });
-      if (res.ok) {
-        alert('Settings saved successfully!');
-      }
+      await settingsService.saveSettings(settings);
+      alert('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
     } finally {

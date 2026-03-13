@@ -2,17 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Users, Search, Mail, ShoppingBag, MoreVertical, Filter } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 
+import { customerService } from '../lib/db';
+
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/customers')
-      .then(res => res.json())
-      .then(data => {
-        setCustomers(data);
-        setLoading(false);
-      });
+    customerService.getAll().then(data => {
+      setCustomers(data || []);
+      setLoading(false);
+    });
   }, []);
 
   return (

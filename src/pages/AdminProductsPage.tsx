@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Package, Plus, Search, Edit2, Trash2, Tag, Box } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 
+import { productService } from '../lib/db';
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,14 +22,16 @@ export default function AdminProductsPage() {
     status: 'active'
   });
 
-  const fetchProducts = () => {
+  const fetchProducts = async () => {
     setLoading(true);
-    fetch('/api/admin/products')
-      .then(res => res.json())
-      .then(data => {
-        setProducts(data);
-        setLoading(false);
-      });
+    try {
+      const data = await productService.getAllAdmin();
+      setProducts(data || []);
+    } catch (error) {
+      console.error("Failed to fetch products:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -51,31 +55,38 @@ export default function AdminProductsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    await fetch(`/api/admin/products/${id}`, { method: 'DELETE' });
-    fetchProducts();
+    try {
+      await productService.delete(id);
+      fetchProducts();
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const url = editingProduct ? `/api/admin/products/${editingProduct.id}` : '/api/admin/products';
-    const method = editingProduct ? 'PUT' : 'POST';
+    
+    const productData = {
+      ...formData,
+      price: parseFloat(formData.price),
+      compare_price: formData.compare_price ? parseFloat(formData.compare_price) : null,
+      stock_quantity: parseInt(formData.stock_quantity)
+    };
 
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...formData,
-        price: parseFloat(formData.price),
-        compare_price: formData.compare_price ? parseFloat(formData.compare_price) : null,
-        stock_quantity: parseInt(formData.stock_quantity)
-      })
-    });
-
-    setIsModalOpen(false);
-    setEditingProduct(null);
-    fetchProducts();
+    try {
+      if (editingProduct) {
+        await productService.update(editingProduct.id, productData);
+      } else {
+        await productService.create(productData);
+      }
+      setIsModalOpen(false);
+      setEditingProduct(null);
+      fetchProducts();
+    } catch (error) {
+      console.error("Save failed:", error);
+    }
   };
 
   return (

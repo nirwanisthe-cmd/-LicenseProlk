@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, DollarSign, PieChart, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 
+import { statsService } from '../lib/db';
+
 export default function AdminReportsPage() {
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(res => res.json())
-      .then(data => setStats(data));
+    statsService.getStats().then(data => setStats(data));
   }, []);
 
   if (!stats) return <div className="animate-pulse space-y-10">

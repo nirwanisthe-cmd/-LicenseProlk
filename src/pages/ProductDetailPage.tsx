@@ -5,6 +5,8 @@ import { useCartStore } from '../store/useCartStore';
 import { formatCurrency } from '../lib/utils';
 import { motion } from 'motion/react';
 
+import { productService } from '../lib/db';
+
 export default function ProductDetailPage() {
   const { slug } = useParams();
   const [product, setProduct] = useState<any>(null);
@@ -12,12 +14,12 @@ export default function ProductDetailPage() {
   const { addItem } = useCartStore();
 
   useEffect(() => {
-    fetch(`/api/products/${slug}`)
-      .then(res => res.json())
-      .then(data => {
+    if (slug) {
+      productService.getBySlug(slug).then(data => {
         setProduct(data);
         setLoading(false);
       });
+    }
   }, [slug]);
 
   if (loading) return <div className="pt-32 max-w-7xl mx-auto px-4 animate-pulse h-screen bg-slate-50" />;

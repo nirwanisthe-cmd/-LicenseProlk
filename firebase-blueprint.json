@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A software license product available in the marketplace.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the product" },
+        "slug": { "type": "string", "description": "URL-friendly identifier" },
+        "short_description": { "type": "string", "description": "Brief summary of the product" },
+        "full_description": { "type": "string", "description": "Detailed description of the product" },
+        "price": { "type": "number", "description": "Current selling price" },
+        "compare_price": { "type": "number", "description": "Original price for comparison" },
+        "stock_quantity": { "type": "integer", "description": "Available stock" },
+        "category": { "type": "string", "description": "Product category (e.g., OS, Design)" },
+        "delivery_type": { "type": "string", "description": "How the product is delivered (e.g., Instant Email)" },
+        "image_url": { "type": "string", "description": "URL to the product image" },
+        "sku": { "type": "string", "description": "Stock Keeping Unit" },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Product availability status" },
+        "created_at": { "type": "string", "format": "date-time", "description": "When the product was added" }
+      },
+      "required": ["name", "slug", "price", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order for software licenses.",
+      "type": "object",
+      "properties": {
+        "order_number": { "type": "string", "description": "Unique order identifier" },
+        "customer_name": { "type": "string", "description": "Name of the customer" },
+        "customer_email": { "type": "string", "description": "Email of the customer" },
+        "total_amount": { "type": "number", "description": "Total price of the order" },
+        "status": { "type": "string", "enum": ["pending", "completed", "cancelled"], "description": "Order fulfillment status" },
+        "payment_status": { "type": "string", "enum": ["unpaid", "paid"], "description": "Payment status" },
+        "created_at": { "type": "string", "format": "date-time", "description": "When the order was placed" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "product_id": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "price": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["order_number", "customer_name", "customer_email", "total_amount", "status"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Application-wide configuration settings.",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["key", "value"]
+    }
+  },
+  "firestore": {
+    "/products": {
+      "schema": "Product",
+      "description": "Collection of all software products."
+    },
+    "/orders": {
+      "schema": "Order",
+      "description": "Collection of customer orders."
+    },
+    "/settings": {
+      "schema": "Setting",
+      "description": "Collection of app settings."
+    }
+  }
+}

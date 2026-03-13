@@ -3,17 +3,17 @@ import { ShoppingBag, Search, Filter, Download, ExternalLink, User } from 'lucid
 import { formatCurrency } from '../lib/utils';
 import { cn } from '../lib/utils';
 
+import { orderService } from '../lib/db';
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/orders')
-      .then(res => res.json())
-      .then(data => {
-        setOrders(data);
-        setLoading(false);
-      });
+    orderService.getAll().then(data => {
+      setOrders(data || []);
+      setLoading(false);
+    });
   }, []);
 
   return (

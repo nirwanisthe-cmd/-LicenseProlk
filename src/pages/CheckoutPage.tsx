@@ -6,6 +6,8 @@ import { ShieldCheck, CreditCard, ArrowLeft, CheckCircle2, Mail, Lock } from 'lu
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 
+import { orderService } from '../lib/db';
+
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCartStore();
   const navigate = useNavigate();
@@ -36,20 +38,25 @@ export default function CheckoutPage() {
     // Simulate payment processing
     setTimeout(async () => {
       try {
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            customer_name: `${formData.firstName} ${formData.lastName}`,
-            customer_email: formData.email,
-            items: items,
-            total_amount: total()
-          })
+        const orderNumber = "ORD-" + Math.random().toString(36).substr(2, 9).toUpperCase();
+        const orderId = await orderService.createOrder({
+          order_number: orderNumber,
+          customer_name: `${formData.firstName} ${formData.lastName}`,
+          customer_email: formData.email,
+          items: items.map(item => ({
+            product_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          total_amount: total(),
+          status: 'pending',
+          payment_status: 'paid'
         });
-        const data = await response.json();
-        if (data.success) {
+
+        if (orderId) {
           clearCart();
-          navigate(`/order-success?order=${data.orderNumber}`);
+          navigate(`/order-success?order=${orderNumber}`);
         }
       } catch (error) {
         console.error("Order failed", error);
